@@ -1,0 +1,28 @@
+flowchart TB
+    merchant["商户业务系统"]
+    subgraph platform["支付平台：逻辑边界（参考设计，未实现）"]
+        access["接入、认证与风险控制"]
+        payment["支付与退款编排"]
+        channel["渠道适配与安全路由"]
+        ledger["账本、余额与资金预留"]
+        clearing["清分、计费与应结计算"]
+        settlement["结算批次与出款"]
+        recon["对账与差错处理"]
+    end
+    provider["外部支付渠道"]
+    bank["银行或托管机构"]
+    merchant -->|业务请求| access
+    access -->|授权后的操作| payment
+    payment -->|持久化的资金操作| channel
+    channel -->|扣款、查单、撤销、退款| provider
+    provider -.->|可信结果证据| channel
+    channel -->|标准化结果| payment
+    payment -.->|Outbox：资金业务事件| ledger
+    ledger -.->|已入账事实| clearing
+    clearing -->|应结结果| settlement
+    settlement -->|出款指令，经机构适配| bank
+    settlement -.->|出款资金事件| ledger
+    provider -.->|交易与结算明细| recon
+    bank -.->|实际资金流水| recon
+    payment -.->|内部交易记录| recon
+    ledger -.->|内部账项| recon

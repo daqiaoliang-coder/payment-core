@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    participant B as 商户业务
+    participant P as 支付编排
+    participant D as 支付数据库
+    participant W as 持久化任务执行器
+    participant C as 外部渠道
+    participant L as 账务服务
+    B->>P: 创建支付（业务幂等身份）
+    P->>D: 事务 A：支付单、尝试、发送任务
+    D-->>P: 提交成功
+    P-->>B: 已受理，不代表已扣款
+    W->>D: 原子领取任务并保存 SUBMITTED
+    W->>C: 扣款（固定渠道请求身份）
+    C--xW: 响应丢失，渠道可能已经扣款
+    W->>D: 保存 UNKNOWN 与查单任务
+    Note over D,C: 本地数据库事务不包含外部扣款
+    W->>C: 按原请求身份查单
+    C-->>W: 成功证据
+    W->>D: 事务 B：结果证据、支付状态、记账 Outbox
+    W->>L: 至少一次投递资金业务事件
+    L->>L: 事务 C：唯一凭证、完整分录、余额约束
+    L-->>W: 新入账或返回已有结果
+    Note over W,L: 重复投递不得增加第二份业务分录
+    Note over B,L: 本图到入账为止，资金到账需后续结算证据

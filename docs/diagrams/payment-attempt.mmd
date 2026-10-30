@@ -1,0 +1,30 @@
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> SUBMITTED: 取得执行权并持久化发送意图
+    CREATED --> CANCELLED: 封闭发送权限且没有外部效果
+    CREATED --> FAILED: 本地校验拒绝且未发送
+    SUBMITTED --> PROCESSING: 渠道明确处理中
+    SUBMITTED --> UNKNOWN: 响应缺失或含义不确定
+    SUBMITTED --> SUCCEEDED: 取得约定资金操作成功证据
+    SUBMITTED --> FAILED: 明确失败且无后续扣款
+    SUBMITTED --> CANCELLED: 确认取消且不能再扣款
+    PROCESSING --> UNKNOWN: 后续结果无法确认
+    PROCESSING --> SUCCEEDED: 可信通知或查单确认
+    PROCESSING --> FAILED: 明确失败且无后续扣款
+    PROCESSING --> CANCELLED: 确认取消且不能再扣款
+    UNKNOWN --> UNKNOWN: 继续查单或升级处理
+    UNKNOWN --> PROCESSING: 确认仍在处理
+    UNKNOWN --> SUCCEEDED: 取得成功证据
+    UNKNOWN --> FAILED: 确认失败且无后续扣款
+    UNKNOWN --> CANCELLED: 确认取消且不能再扣款
+    SUCCEEDED --> [*]
+    FAILED --> [*]
+    CANCELLED --> [*]
+    note right of UNKNOWN
+        本地结果未知，不等于渠道失败。
+        不能仅因超时切换渠道重新扣款。
+    end note
+    note right of SUCCEEDED
+        退款、拒付属于独立后续操作。
+        与终态冲突的迟到证据进入差错流程。
+    end note
