@@ -3,6 +3,7 @@ package com.example.paymentcore.payment;
 import com.example.paymentcore.channel.ChannelPort;
 import com.example.paymentcore.channel.ChannelResult;
 import com.example.paymentcore.domain.AttemptStatus;
+import com.example.paymentcore.security.RecoveryGuardService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -22,16 +23,21 @@ public class AttemptSender {
     private final PaymentRepository repository;
     private final PaymentTransactions transactions;
     private final ChannelPort channel;
+    private final RecoveryGuardService guard;
 
     public AttemptSender(JdbcTemplate jdbc, PaymentRepository repository, PaymentTransactions transactions,
-                         ChannelPort channel) {
+                         ChannelPort channel, RecoveryGuardService guard) {
         this.jdbc = jdbc;
         this.repository = repository;
         this.transactions = transactions;
         this.channel = channel;
+        this.guard = guard;
     }
 
     public int sendPending() {
+        if (guard.isPaused(RecoveryGuardService.PAYMENT_RECOVERY)) {
+            return 0; // 灾备演练或证据缺失时暂停发送，不能把暂停当成失败
+        }
         List<String> attemptIds = jdbc.queryForList(
                 "SELECT attempt_id FROM channel_attempt WHERE status = ? "
                         + "ORDER BY created_at, attempt_id LIMIT " + BATCH_LIMIT,

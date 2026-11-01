@@ -102,7 +102,9 @@ class SettlementStage3Tests {
                 "outbox_record", "event_log", "mock_channel_scenario", "mock_channel_tx", "mock_channel_refund_tx",
                 "refund_order", "refund_idempotency", "refund_pool", "refund_reservation", "reservation_event",
                 "refund_event", "payment_posting", "ledger_entry", "ledger_journal", "ledger_business_operation",
-                "correction_link", "balance_projection", "account_balance", "ledger_account")) {
+                "correction_link", "balance_projection", "account_balance", "ledger_account",
+                "recovery_lease", "recovery_guard", "authority_scope", "late_effect", "approval_request",
+                "security_audit", "beneficiary_account")) {
             jdbc.update("DELETE FROM " + table);
         }
         jdbc.update("DELETE FROM fee_rule WHERE rule_version <> ?", FEE_V1);

@@ -452,3 +452,76 @@ CREATE TABLE IF NOT EXISTS bank_allocation (
     created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_bank_allocation UNIQUE (statement_id, entry_id)
 );
+
+-- ===== 阶段 4：安全、容量与灾备验证 =====
+
+-- 恢复任务租约：以条件更新领取，过期只说明本地执行权失效，不证明外部操作失败
+CREATE TABLE IF NOT EXISTS recovery_lease (
+    task_name   VARCHAR(64) NOT NULL PRIMARY KEY,
+    lease_owner VARCHAR(64),
+    lease_token VARCHAR(64),
+    expires_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version     INT         NOT NULL DEFAULT 0
+);
+
+-- 恢复门禁：灾备演练或证据缺失时暂停受影响重放
+CREATE TABLE IF NOT EXISTS recovery_guard (
+    guard_key  VARCHAR(64)  NOT NULL PRIMARY KEY,
+    paused     BOOLEAN      NOT NULL,
+    reason     VARCHAR(256),
+    updated_by VARCHAR(64),
+    updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 地域权威：切换时递增 epoch，旧地域写入者不得继续本地写入
+CREATE TABLE IF NOT EXISTS authority_scope (
+    scope_id      VARCHAR(64) NOT NULL PRIMARY KEY,
+    active_region VARCHAR(32) NOT NULL,
+    epoch         INT         NOT NULL,
+    updated_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 迟到效果：切换后抵达的旧写入者效果只记录核查，不直接应用
+CREATE TABLE IF NOT EXISTS late_effect (
+    late_effect_id VARCHAR(64)  NOT NULL PRIMARY KEY,
+    scope_id       VARCHAR(64)  NOT NULL,
+    region         VARCHAR(32)  NOT NULL,
+    epoch          INT          NOT NULL,
+    external_ref   VARCHAR(128) NOT NULL,
+    detail         VARCHAR(512),
+    status         VARCHAR(16)  NOT NULL,
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_late_effect UNIQUE (scope_id, external_ref)
+);
+
+-- 敏感操作审批：受益人变更或人工修账需要独立批准
+CREATE TABLE IF NOT EXISTS approval_request (
+    approval_id  VARCHAR(64)  NOT NULL PRIMARY KEY,
+    operation    VARCHAR(48)  NOT NULL,
+    target_id    VARCHAR(64)  NOT NULL,
+    requested_by VARCHAR(64)  NOT NULL,
+    approved_by  VARCHAR(64),
+    status       VARCHAR(16)  NOT NULL,
+    reason       VARCHAR(256),
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at   TIMESTAMP
+);
+
+-- 安全审计：拒绝的敏感操作同样留痕，明细统一脱敏
+CREATE TABLE IF NOT EXISTS security_audit (
+    audit_id   VARCHAR(64) NOT NULL PRIMARY KEY,
+    actor      VARCHAR(64) NOT NULL,
+    action     VARCHAR(48) NOT NULL,
+    target_id  VARCHAR(64),
+    outcome    VARCHAR(16) NOT NULL,
+    detail     VARCHAR(512),
+    created_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 受益人账户：变更只经审批后落地
+CREATE TABLE IF NOT EXISTS beneficiary_account (
+    merchant_id      VARCHAR(64)  NOT NULL PRIMARY KEY,
+    bank_account_ref VARCHAR(128) NOT NULL,
+    updated_by       VARCHAR(64)  NOT NULL,
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

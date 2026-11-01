@@ -58,7 +58,9 @@ class PaymentCoreStage1Tests {
     @BeforeEach
     void cleanDatabase() {
         for (String table : List.of("merchant_idempotency", "payment_order", "channel_attempt", "payment_fact",
-                "payment_event", "outbox_record", "event_log", "mock_channel_scenario", "mock_channel_tx")) {
+                "payment_event", "outbox_record", "event_log", "mock_channel_scenario", "mock_channel_tx",
+                "recovery_lease", "recovery_guard", "authority_scope", "late_effect", "approval_request",
+                "security_audit", "beneficiary_account")) {
             jdbc.update("DELETE FROM " + table);
         }
     }
