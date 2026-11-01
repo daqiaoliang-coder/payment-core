@@ -13,6 +13,7 @@ import com.example.paymentcore.ledger.JournalRequest;
 import com.example.paymentcore.ledger.LedgerAccountService;
 import com.example.paymentcore.ledger.LedgerConstants;
 import com.example.paymentcore.ledger.LedgerService;
+import com.example.paymentcore.security.OperationAuditService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
@@ -39,14 +40,17 @@ public class RefundTransactions {
     private final LedgerService ledger;
     private final LedgerAccountService accounts;
     private final ObjectMapper objectMapper;
+    private final OperationAuditService audit;
 
     public RefundTransactions(JdbcTemplate jdbc, RefundRepository repository, LedgerService ledger,
-                              LedgerAccountService accounts, ObjectMapper objectMapper) {
+                              LedgerAccountService accounts, ObjectMapper objectMapper,
+                              OperationAuditService audit) {
         this.jdbc = jdbc;
         this.repository = repository;
         this.ledger = ledger;
         this.accounts = accounts;
         this.objectMapper = objectMapper;
+        this.audit = audit;
     }
 
     @Transactional
@@ -96,6 +100,8 @@ public class RefundTransactions {
 
         appendEvent(refundId, RefundStatus.ACCEPTED.name(), "退款已受理并冻结额度，尚未调用渠道");
         enqueue(refundId, 0, "REFUND_ACCEPTED", paymentId, amountMinor, currency);
+        audit.recordAccepted(merchantId, "REFUND_CREATE", "REFUND", refundId, null, paymentId,
+                "refund_order", null, "amount=" + amountMinor + " " + currency);
         return requireView(refundId);
     }
 

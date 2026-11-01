@@ -19,7 +19,7 @@ import java.util.List;
 public class RecoveryService {
 
     private static final int BATCH_LIMIT = 50;
-    private static final String TASK_NAME = "payment-recovery";
+    private static final String TASK_NAME = RecoveryLeaseService.PAYMENT_RECOVERY_TASK;
     private static final String OWNER = "payment-recovery-worker";
     private static final long LEASE_TTL_MILLIS = 30_000L;
 

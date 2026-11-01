@@ -18,6 +18,9 @@ import java.util.UUID;
 @Service
 public class RecoveryLeaseService {
 
+    /** 支付恢复任务名；监控与恢复执行共用同一标识。 */
+    public static final String PAYMENT_RECOVERY_TASK = "payment-recovery";
+
     public record Lease(String taskName, String owner, String token) {
     }
 

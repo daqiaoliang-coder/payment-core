@@ -14,6 +14,7 @@ import com.example.paymentcore.ledger.JournalResult;
 import com.example.paymentcore.ledger.LedgerAccountService;
 import com.example.paymentcore.ledger.LedgerConstants;
 import com.example.paymentcore.ledger.LedgerService;
+import com.example.paymentcore.security.OperationAuditService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
@@ -41,14 +42,17 @@ public class PayoutTransactions {
     private final LedgerService ledger;
     private final LedgerAccountService accounts;
     private final ObjectMapper objectMapper;
+    private final OperationAuditService audit;
 
     public PayoutTransactions(JdbcTemplate jdbc, SettlementRepository repository, LedgerService ledger,
-                              LedgerAccountService accounts, ObjectMapper objectMapper) {
+                              LedgerAccountService accounts, ObjectMapper objectMapper,
+                              OperationAuditService audit) {
         this.jdbc = jdbc;
         this.repository = repository;
         this.ledger = ledger;
         this.accounts = accounts;
         this.objectMapper = objectMapper;
+        this.audit = audit;
     }
 
     @Transactional
@@ -94,6 +98,9 @@ public class PayoutTransactions {
         }
         appendEvent(payoutId, PayoutStatus.CREATED.name(), "已原子预留应付并持久化外部付款意图");
         enqueue(payoutId, 0, "PAYOUT_CREATED", batch.merchantId(), amount, batch.currency());
+        audit.recordAccepted("settlement-service", "PAYOUT_CREATE", "PAYOUT", payoutId, batch.ruleVersion(),
+                batchId, "payout_order", null, "batchId=" + batchId + "; amount=" + amount + " "
+                        + batch.currency());
         return SettlementRepository.payoutView(repository.findPayout(payoutId));
     }
 
@@ -212,6 +219,8 @@ public class PayoutTransactions {
         appendEvent(payoutId, PayoutStatus.RETURNED.name(), "银行退回: " + reason);
         enqueue(payoutId, repository.findPayout(payoutId).version(), "PAYOUT_RETURNED", payout.merchantId(),
                 payout.amountMinor(), payout.currency());
+        audit.recordAccepted(approvedBy, "PAYOUT_RETURN", "PAYOUT", payoutId, null, payout.bankReference(),
+                "payout_order", null, "reason=" + reason);
         return SettlementRepository.payoutView(repository.findPayout(payoutId));
     }
 

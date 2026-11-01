@@ -8,6 +8,7 @@ import com.example.paymentcore.domain.AttemptStatus;
 import com.example.paymentcore.domain.OutboxStatus;
 import com.example.paymentcore.domain.PaymentStatus;
 import com.example.paymentcore.domain.PostingStatus;
+import com.example.paymentcore.security.OperationAuditService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
@@ -34,11 +35,14 @@ public class PaymentTransactions {
     private final JdbcTemplate jdbc;
     private final PaymentRepository repository;
     private final ObjectMapper objectMapper;
+    private final OperationAuditService audit;
 
-    public PaymentTransactions(JdbcTemplate jdbc, PaymentRepository repository, ObjectMapper objectMapper) {
+    public PaymentTransactions(JdbcTemplate jdbc, PaymentRepository repository, ObjectMapper objectMapper,
+                               OperationAuditService audit) {
         this.jdbc = jdbc;
         this.repository = repository;
         this.objectMapper = objectMapper;
+        this.audit = audit;
     }
 
     @Transactional
@@ -75,6 +79,9 @@ public class PaymentTransactions {
         appendHistory(paymentId, AttemptStatus.CREATED.name(), "支付单已受理，尚未越过渠道发送边界");
         enqueue(paymentId, 0, "PAYMENT_ACCEPTED",
                 payload(paymentId, merchantOrderId, PaymentStatus.ACCEPTED.name(), amountMinor, currency, null));
+        audit.recordAccepted(merchantId, "PAYMENT_CREATE", "PAYMENT", paymentId, null, null,
+                "payment_order", null, "merchantOrderId=" + merchantOrderId + "; amount=" + amountMinor
+                        + " " + currency);
 
         PaymentView view = repository.findPayment(paymentId);
         if (view == null) {

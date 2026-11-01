@@ -525,3 +525,23 @@ CREATE TABLE IF NOT EXISTS beneficiary_account (
     updated_by       VARCHAR(64)  NOT NULL,
     updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ===== 阶段 5：运行审计与监控 =====
+
+-- 操作审计链：与业务操作同事务追加，回答谁、做了什么、规则版本、外部证据、
+-- 影响的业务投影以及审批依据；trace_id 只用于关联，不充当资金幂等键。
+CREATE TABLE IF NOT EXISTS operation_audit (
+    audit_id      VARCHAR(64)  NOT NULL PRIMARY KEY,
+    trace_id      VARCHAR(64)  NOT NULL,
+    actor         VARCHAR(64)  NOT NULL,
+    action        VARCHAR(48)  NOT NULL,
+    resource_type VARCHAR(32)  NOT NULL,
+    business_id   VARCHAR(64),
+    rule_version  VARCHAR(32),
+    evidence_ref  VARCHAR(128),
+    projection    VARCHAR(64),
+    approval_id   VARCHAR(64),
+    outcome       VARCHAR(16)  NOT NULL,
+    detail        VARCHAR(512),
+    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

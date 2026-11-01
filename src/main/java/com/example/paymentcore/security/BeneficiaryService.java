@@ -23,11 +23,14 @@ public class BeneficiaryService {
     private final JdbcTemplate jdbc;
     private final ApprovalService approvals;
     private final SecurityAuditService audit;
+    private final OperationAuditService operationAudit;
 
-    public BeneficiaryService(JdbcTemplate jdbc, ApprovalService approvals, SecurityAuditService audit) {
+    public BeneficiaryService(JdbcTemplate jdbc, ApprovalService approvals, SecurityAuditService audit,
+                              OperationAuditService operationAudit) {
         this.jdbc = jdbc;
         this.approvals = approvals;
         this.audit = audit;
+        this.operationAudit = operationAudit;
     }
 
     public BeneficiaryView change(String merchantId, String bankAccountRef, String requestedBy,
@@ -43,6 +46,8 @@ public class BeneficiaryService {
                 merchantId, bankAccountRef, requestedBy);
         audit.record(requestedBy, OPERATION, merchantId, SecurityAuditService.OUTCOME_ACCEPTED,
                 "bankAccountRef=" + bankAccountRef);
+        operationAudit.recordAccepted(requestedBy, OPERATION, "BENEFICIARY", merchantId, null, null,
+                "beneficiary_account", approvalId, "bankAccountRef updated");
         return get(merchantId);
     }
 
